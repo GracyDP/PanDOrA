@@ -1,20 +1,24 @@
-import pandas as pd
-from pymongo import MongoClient
+"""
+connection.py — COMPATIBILITÀ
+==============================
+Questo file NON è più necessario.
+Tutta la logica di connessione e inizializzazione del database
+è ora integrata in utils/db.py e viene eseguita automaticamente
+all'avvio di app.py.
 
-# Connessione a MongoDB
-client = MongoClient("mongodb://localhost:27017/")
-db = client["mioDatabase"]
+Le funzioni qui sotto sono mantenute come wrapper per non rompere
+eventuali script che ancora le importano.
+"""
 
-# Legge i CSV
-df_paesi = pd.read_csv("csv/key-countries-pivoted.csv")
-df_serie = pd.read_csv("csv/time-series-19-covid-combined.csv")
+from utils.db import _try_mongo
 
-# Converte in dizionari
-paesi_dict = df_paesi.to_dict("records")
-serie_dict = df_serie.to_dict("records")
 
-# Inserisce nelle collezioni
-db.paesi.insert_many(paesi_dict)
-db.serie.insert_many(serie_dict)
+def initialize_database():
+    """Non necessaria: l'inizializzazione avviene automaticamente in utils/db.py."""
+    _try_mongo()  # forza connessione + init se non già fatto
+    print("[connection.py] Inizializzazione delegata a utils/db.py.")
 
-print("Import completato :)")
+
+def get_db():
+    """Restituisce l'oggetto database MongoDB (o None)."""
+    return _try_mongo()
