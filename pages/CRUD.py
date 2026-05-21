@@ -12,18 +12,87 @@ Tutte le operazioni CRUD usano query MongoDB native:
 import streamlit as st
 import pandas as pd
 from datetime import date, datetime
+from PIL import Image
 
 st.set_page_config(page_title="Operazioni CRUD", layout="wide", initial_sidebar_state="collapsed")
 
+# ── CSS per nascondere navigazione automatica ────────────────────────────────
+st.markdown("""
+<style>
+[data-testid="stSidebarNav"] { display: none; }
+
+/* Sidebar — aumentata larghezza */
+[data-testid="stSidebar"] {
+    background: #0a1628 !important;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    width: 380px !important;
+}
+
+/* Centra il logo nella sidebar */
+[data-testid="stSidebar"] img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+</style>
+""", unsafe_allow_html=True)
+
 from utils.styles import apply_dark_theme
 apply_dark_theme()
-from utils.navbar import render_top_navbar
 
-render_top_navbar("Gestione Dati")
+# ── Logo e Sidebar personalizzata ────────────────────────────────────────────
+logo = Image.open("logoBD.png")
+from utils.db import mongo_available
+
+with st.sidebar:
+    st.image(logo, width=280)
+
+    st.markdown("""
+    <div style="text-align:center;margin-top:-8px;margin-bottom:16px;">
+        <div style="font-size:1.3rem;font-weight:700;color:#e8f1ff;">PanDOrA</div>
+        <div style="font-size:0.72rem;color:#4a6a99;letter-spacing:0.5px;">
+            Pandemic Data Observatory & Analysis
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.divider()
+
+    st.markdown("""
+    <div style="font-size:0.68rem;font-weight:600;text-transform:uppercase;
+                letter-spacing:1.5px;color:#3a5a8a;margin-bottom:10px;">
+        Navigazione
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.page_link("app.py",                  label="Home")
+    st.page_link("pages/Mappa.py",          label="Mappa")
+    st.page_link("pages/CRUD.py",           label="Gestione Dati")
+
+    st.divider()
+
+    if mongo_available():
+        st.markdown(
+            '<div style="display:flex;align-items:center;gap:8px;">'
+            '<span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;"></span>'
+            '<span style="font-size:0.78rem;color:#34d399;">MongoDB connesso</span>'
+            '</div>',
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            '<div style="display:flex;align-items:center;gap:8px;">'
+            '<span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;"></span>'
+            '<span style="font-size:0.78rem;color:#f87171;">Modalità CSV</span>'
+            '</div>',
+            unsafe_allow_html=True
+        )
+
+# ── Pagina CRUD ────────────────────────────────────────────────────────────────
 st.markdown('<p class="pandora-title" style="font-size:2rem;">CRUD — Gestione Dati</p>', unsafe_allow_html=True)
 st.markdown('<p class="pandora-sub">Crea, Leggi, Aggiorna, Elimina record COVID-19</p>', unsafe_allow_html=True)
 
-from utils.db import insert_record, update_record, delete_record, mongo_available, _try_mongo, load_timeseries, load_pivoted, retry_mongo
+from utils.db import insert_record, update_record, delete_record, _try_mongo, load_timeseries, load_pivoted, retry_mongo
 from utils.queries import get_countries, count_records, query_records, find_records_for_edit
 
 mongo_ok = mongo_available()
@@ -200,7 +269,7 @@ with tab_u:
     if not mongo_ok:
         st.error("MongoDB non disponibile. Impossibile modificare record.")
     else:
-        st.markdown("**1. Cerca il record da modificare:**")
+        st.markdown("**Cerca il record da modificare:**")
         uc1, uc2, uc3 = st.columns(3)
         with uc1:
             u_paese = st.selectbox("Paese", paesi, key="u_paese")
@@ -224,7 +293,7 @@ with tab_u:
 
                 # Se ci sono più record, permetti di selezionarne uno
                 if len(found) > 1:
-                    st.markdown("**2. Seleziona il record da modificare:**")
+                    st.markdown("** Seleziona il record da modificare:**")
                     options = []
                     for i, row in found.iterrows():
                         prov_label = row.get("Province/State", "") or "nazionale"
@@ -242,7 +311,7 @@ with tab_u:
                 cur_rec = int(row["Recovered"]) if pd.notna(row.get("Recovered")) else 0
                 cur_prov = row.get("Province/State", "") or ""
 
-                st.markdown("**3. Inserisci i nuovi valori (`$set`):**")
+                st.markdown(" Inserisci i `nuovi` valori:")
                 with st.form("crud_update"):
                     eu1, eu2, eu3 = st.columns(3)
                     with eu1:
@@ -254,7 +323,7 @@ with tab_u:
                     with eu3:
                         new_rec = st.number_input("Guariti", min_value=0,
                                                     value=cur_rec, key="u_rec")
-                    u_submit = st.form_submit_button("Aggiorna con $set", use_container_width=True)
+                    u_submit = st.form_submit_button("Aggiorna", use_container_width=True)
 
                 if u_submit:
                     if new_deaths > new_conf:
@@ -274,7 +343,7 @@ with tab_u:
                         }
                         if update_record(filtro, aggiornamento):
                             st.success(
-                                f"Record aggiornato con `update_one()` + `$set` ✔\n\n"
+                                f"Record aggiornato con `update_one()` + `$set` \n\n"
                                 f"Filtro: `{filtro}`\n\n"
                                 f"$set: `{aggiornamento}`"
                             )
@@ -283,10 +352,12 @@ with tab_u:
                         else:
                             st.error("Nessun documento modificato — controlla i criteri.")
 
+
 # DELETE  — find() per il preview + delete_one() / delete_many()
 #______________________________________________________________________________
+with tab_d:
     st.subheader("DELETE")
-    st.caption("Cerca con `find()` → elimina con `delete_one()` o `delete_many()`.")
+    #st.caption("Cerca con `find()` → elimina con `delete_one()` o `delete_many()`.")
 
     if not mongo_ok:
         st.error("MongoDB non disponibile. Impossibile eliminare record.")
@@ -302,7 +373,7 @@ with tab_u:
             d_prov = st.text_input("Provincia (vuoto = nazionale)", key="d_prov")
 
         d_many = st.checkbox(
-            "Usa `delete_many()` — elimina tutti i record corrispondenti",
+            "Elimina tutti i record corrispondenti", #Usa `delete_many()` — 
             key="d_many",
         )
 
@@ -315,8 +386,8 @@ with tab_u:
             st.dataframe(found_d, use_container_width=True)
             n_found = len(found_d)
             st.markdown(
-                f"Verranno eliminati **{n_found}** documento/i con "
-                f"`{'delete_many' if d_many else 'delete_one'}()`."
+                f"Verranno eliminati **{n_found}** documento/i "
+                #f"con `{'delete_many' if d_many else 'delete_one'}()`."
             )
 
             conferma = st.checkbox(
@@ -327,11 +398,14 @@ with tab_u:
                 filtro = {
                     "Country/Region": d_paese,
                     "Date":           datetime.combine(d_data, datetime.min.time()),
-                    "Province/State": d_prov if d_prov else None,
                 }
+                # Se la provincia è specificata, includila nel filtro
+                if d_prov:
+                    filtro["Province/State"] = {"$regex": d_prov, "$options": "i"}
+                
                 eliminati = delete_record(filtro, delete_many=d_many)
                 if eliminati > 0:
-                    st.success(f"Eliminati **{eliminati}** documento/i ✔")
+                    st.success(f"Eliminati **{eliminati}** documento/i ")
                     st.rerun()
                 else:
                     st.error("Nessun documento eliminato.")
@@ -344,7 +418,7 @@ with tab_j:
     st.caption(
         "Unisce la collection **serie** (dati dettagliati per paese/data) "
         "con la collection **paesi** (dati pivotati 8 paesi chiave) "
-        "tramite `$lookup` (MongoDB) o `pd.merge()` (fallback pandas)."
+        #"tramite `$lookup` (MongoDB) o `pd.merge()` (fallback pandas)."
     )
 
     st.markdown("""
@@ -375,7 +449,7 @@ with tab_j:
 
     pivot_col = SERIE_TO_PIVOT[j_paese]
 
-    if st.button("Esegui JOIN", key="j_run", type="primary"):
+    if st.button("Esegui", key="j_run", type="primary"):
         import plotly.graph_objects as go
 
         df_join = pd.DataFrame()
@@ -464,11 +538,12 @@ with tab_j:
             df_join["Differenza"] = df_join["Confirmed_serie"] - df_join["Confirmed_paesi"]
 
             st.success(
-                f"**{len(df_join)}** record trovati — metodo: {method_used}"
+                f"**{len(df_join)}** record trovati " #— metodo: {method_used}
             )
 
             # ── Pipeline $lookup di riferimento ──────────────────────────────
-            with st.expander("🔧 Pipeline MongoDB `$lookup`"):
+            #with st.expander("Pipeline MongoDB `$lookup`"):
+            with st.expander("Risultato:"):
                 st.code(f"""db.serie.aggregate([
     {{ "$match": {{ "Country/Region": "{j_paese}",
                    "Date": {{ "$gte": ISODate("{j_date_from}"),
