@@ -61,9 +61,6 @@ st.set_page_config(
 # ── CSS globale ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-/* Nasconde nav automatica Streamlit */
-[data-testid="stSidebarNav"] { display: none; }
-
 /* Font */
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
@@ -76,11 +73,23 @@ html, body, [class*="css"] {
     background: #0d1b2a;
 }
 
-/* Sidebar */
+/* Nasconde navigazione automatica Streamlit */
+[data-testid="stSidebarNav"] { display: none; }
+
+/* Sidebar — aumentata larghezza */
 [data-testid="stSidebar"] {
     background: #0a1628 !important;
     border-right: 1px solid rgba(255,255,255,0.06);
+    width: 380px !important;
 }
+
+/* Centra il logo nella sidebar */
+[data-testid="stSidebar"] img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 [data-testid="stSidebar"] * {
     color: #c8d8f0 !important;
 }
@@ -270,15 +279,24 @@ html, body, [class*="css"] {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #0d1b2a; }
 ::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 3px; }
+
+
 </style>
 """, unsafe_allow_html=True)
-
-from utils.navbar import render_top_navbar
-render_top_navbar("Home")
 
 # ── Import dati ────────────────────────────────────────────────────────────────
 from utils.db import mongo_available, retry_mongo
 from utils.queries import get_snapshot, get_date_range, get_countries, count_records, aggregate_timeseries
+
+# ── Contenitore principale con padding per navbar fissa ──────────────────────
+st.markdown("""
+<style>
+/* Aggiungi padding-top al contenuto principale per la navbar fissa */
+.stApp > div:first-child {
+    padding-top: 20px !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # Shell iniziale statica: titolo e placeholder mostrati subito
 st.markdown('<p class="hero-title">Pannello Dati COVID-19</p>', unsafe_allow_html=True)
@@ -312,11 +330,10 @@ date_badge_slot.markdown(
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.image(logo, width=150)
-
+    st.image(logo, width=350)
+#        <div style="font-size:1.3rem;font-weight:700;color:#e8f1ff;">PanDOrA</div> sotto
     st.markdown("""
     <div style="text-align:center;margin-top:-8px;margin-bottom:16px;">
-        <div style="font-size:1.3rem;font-weight:700;color:#e8f1ff;">PanDOrA</div>
         <div style="font-size:0.72rem;color:#4a6a99;letter-spacing:0.5px;">
             Pandemic Data Observatory & Analysis
         </div>
@@ -333,10 +350,8 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     st.page_link("app.py",                  label="Home")
-    st.page_link("pages/Dashboard.py",      label="Dashboard")
-    st.page_link("pages/Insert.py",         label="Inserimento")
+    st.page_link("pages/Mappa.py",          label="Mappa")
     st.page_link("pages/CRUD.py",           label="Gestione Dati")
-    st.page_link("pages/Stampa_Dati.py",    label="Stampa & Export")
 
     st.divider()
 
@@ -520,8 +535,11 @@ with tf2:
         label_visibility="visible",
     )
 
-with tf3:
-    trend_log = st.toggle("Scala log", value=False, key="home_trend_log")
+#with tf3:
+#    st.markdown(
+#        '<div style="font-size:0.88rem;color:#7eb3f5;font-weight:600;">Scala lineare</div>',
+#        unsafe_allow_html=True,
+#    )
 
 # Periodi rapidi
 periodo_opts = {"Tutto": None, "Ultimi 90gg": 90, "Ultimi 60gg": 60, "Ultimi 30gg": 30}
@@ -610,7 +628,7 @@ if trend_paesi:
                 gridcolor="rgba(59,130,246,0.08)",
                 tickfont=dict(size=10),
                 zeroline=False,
-                type="log" if trend_log else "linear",
+                type="linear",
                 tickformat=",d",
             ),
         )
@@ -721,14 +739,11 @@ with mf3:
         min_value=0, value=0, step=1000,
         key="map_min_casi",
     )
-with mf4:
-    map_scala = st.radio(
-        "Scala cerchi",
-        ["Lineare", "Log"],
-        index=1,
-        key="map_scala",
-        horizontal=True,
-    )
+#with mf4:
+    #st.markdown(
+    #    '<div style="font-size:0.88rem;color:#7eb3f5;font-weight:600;margin-top:8px;">Scala lineare</div>',
+    #    unsafe_allow_html=True,
+    #)
 with mf5:
     map_tile = st.selectbox(
         "Stile",
@@ -758,7 +773,7 @@ map_slot.markdown(
     unsafe_allow_html=True,
 )
 
-with st.spinner("Caricamento snapshot mappa in corso..."):
+with st.spinner("Caricamento mappa in corso..."):
     df_map = aggregate_map_snapshot(
         data_snapshot=map_data,
         min_confirmed=map_min_casi,
@@ -791,8 +806,6 @@ else:
     col_metrica = map_metrica
     if col_metrica in df_map.columns:
         vals = df_map[col_metrica].fillna(0).astype(float)
-        if map_scala == "Log":
-            vals = np.log1p(vals)
         vmax = vals.max() if vals.max() > 0 else 1
         df_map["radius_m"] = (vals / vmax * 500_000).clip(lower=30_000)
     else:
@@ -919,7 +932,7 @@ else:
             </div>
             <div style="color:#4a6a99;font-size:10px;border-top:1px solid rgba(59,130,246,0.15);
                         padding-top:6px;">
-                Raggio {'logaritmico' if map_scala == 'Log' else 'lineare'}
+                Raggio proporzionale
             </div>
         </div>
         """
