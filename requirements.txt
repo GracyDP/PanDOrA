@@ -1,0 +1,12 @@
+folium==0.20.0
+matplotlib==3.10.9
+numpy==2.4.6
+pandas==3.0.3
+Pillow==12.2.0
+plotly==6.5.2
+pymongo==4.17.0
+python-dotenv==1.2.2
+scipy==1.17.1
+seaborn==0.13.2
+streamlit==1.54.0
+streamlit_folium==0.27.2
