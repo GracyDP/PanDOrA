@@ -75,6 +75,10 @@ pip install -r requirements.txt
 
 ### Sorgenti dati
 
+*SARS-COVID-19*. Kaggle.  
+Disponibile al link: [https://www.kaggle.com/datasets/heptapod/titanic](https://www.kaggle.com/datasets/gauravduttakiit/covid-19)  
+Accesso effettuato in data: 27 May 2025.
+
 | File | Formato | Righe | Descrizione |
 |------|---------|-------|-------------|
 | `csv/time-series-19-covid-combined.csv` | Long | ~231.746 | Tutti i paesi, una riga per data/paese/provincia |
